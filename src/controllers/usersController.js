@@ -90,7 +90,7 @@ const updateUser = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const query = {
-            text: 'UPDATE users SET name = $1, email = $2, password = $3, role = $4 WHERE id = $5',
+            text: 'UPDATE users SET name = $1, email = $2, password = $3, role = $4 WHERE id = $5 RETURNING id',
             values: [name, email, hashedPassword, role, id],
         };
 

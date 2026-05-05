@@ -38,7 +38,7 @@ const init = async () => {
 
     // 3. Logic Consume & Kirim Email (Asynchronous)
     channel.consume(queueName, async (msg) => {
-        if (message !== null) {
+        if (msg !== null) { // <--- UBAH DI SINI (sebelumnya if (message !== null))
             try {
                 // Parse payload yang isinya { application_id: '...' }
                 const { application_id } = JSON.parse(msg.content.toString());

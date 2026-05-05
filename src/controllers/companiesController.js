@@ -46,4 +46,24 @@ const updateCompany = async (req, res) => {
     }
 };
 
-module.exports = { getCompanyById, updateCompany };
+const addCompany = async (req, res) => {
+    try {
+        const { name, description = '' } = req.body;
+        const id = `company-${Date.now()}`;
+
+        const query = {
+            text: 'INSERT INTO companies (id, name, description) VALUES($1, $2, $3) RETURNING id',
+            values: [id, name, description],
+        };
+        const result = await pool.query(query);
+
+        res.status(201).json({
+            status: 'success',
+            data: { id: result.rows[0].id },
+        });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+module.exports = { getCompanyById, updateCompany, addCompany };

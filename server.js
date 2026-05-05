@@ -6,6 +6,8 @@ const authRoutes = require('./src/routes/auth'); // Tambahkan ini
 const bookmarksRouter = require('./src/routes/bookmarks');
 const applicationsRouter = require('./src/routes/applications');
 const companiesRouter = require('./src/routes/companies');
+const jobsRouter = require('./src/routes/jobs');
+const categoriesRouter = require('./src/routes/categories');
 const { connectRabbitMQ } = require('./src/services/rabbitmq');
 
 const app = express();
@@ -21,6 +23,8 @@ app.use('/documents', documentRoutes);
 app.use('/bookmarks', bookmarksRouter);
 app.use('/applications', applicationsRouter);
 app.use('/companies', companiesRouter);
+app.use('/jobs', jobsRouter);
+app.use('/categories', categoriesRouter);
 
 app.get('/', (req, res) => {
     res.json({ status: 'success', message: 'OpenJob API V2 is running!' });

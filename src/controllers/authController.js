@@ -103,4 +103,4 @@ const logout = async (req, res) => {
     }
 };
 
-module.exports = { login, refreshAuth, logout };
+module.exports = { login, refreshAuth, logout};

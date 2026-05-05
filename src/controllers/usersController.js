@@ -1,5 +1,6 @@
 const bcrypt = require('bcrypt');
 const pool = require('../config/database');
+const redisClient = require('../config/redis'); // Sesuaikan path
 
 const addUser = async (req, res) => {
     try {
@@ -35,6 +36,21 @@ const addUser = async (req, res) => {
 const getUserById = async (req, res) => {
     try {
         const { id } = req.params;
+        const cacheKey = `user:${id}`;
+
+        // 1. Cek apakah ada data di Cache Redis
+        const cachedUser = await redisClient.get(cacheKey);
+        
+        if (cachedUser) {
+            // Jika ada di cache, set custom header dan kembalikan data darinya
+            res.setHeader('X-Data-Source', 'cache');
+            return res.status(200).json({
+                status: 'success',
+                data: JSON.parse(cachedUser),
+            });
+        }
+
+        // 2. Jika tidak ada di cache, load dari database
         const query = {
             text: 'SELECT id, name, email, role FROM users WHERE id = $1',
             values: [id],
@@ -45,13 +61,55 @@ const getUserById = async (req, res) => {
             return res.status(404).json({ status: 'failed', message: 'User tidak ditemukan' });
         }
 
+        const userData = result.rows[0];
+
+        // 3. Simpan hasil query ke cache dengan expired 1 jam (3600 detik)
+        await redisClient.set(cacheKey, JSON.stringify(userData), {
+            EX: 3600 
+        });
+
         res.status(200).json({
             status: 'success',
-            data: result.rows[0],
+            data: userData,
         });
     } catch (error) {
         res.status(500).json({ status: 'error', message: error.message });
     }
 };
 
-module.exports = { addUser, getUserById };
+const updateUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, email, password, role = 'user' } = req.body;
+
+        // Validasi payload
+        if (!name || !email || !password) {
+            return res.status(400).json({ status: 'failed', message: 'Payload tidak lengkap atau tidak valid' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const query = {
+            text: 'UPDATE users SET name = $1, email = $2, password = $3, role = $4 WHERE id = $5',
+            values: [name, email, hashedPassword, role, id],
+        };
+
+        const result = await pool.query(query);
+
+        if (!result.rows.length) {
+            return res.status(404).json({ status: 'failed', message: 'User tidak ditemukan' });
+        }
+
+        // Hapus cache yang terkait user tersebut
+        await redisClient.del(`user:${id}`);
+
+        res.status(200).json({
+            status: 'success',
+            data: { id },
+        });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
+};
+
+module.exports = { addUser, getUserById, updateUser };

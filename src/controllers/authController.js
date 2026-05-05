@@ -6,11 +6,6 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ status: 'failed', message: 'Email dan password harus diisi' });
-        }
-
-        // Cek user di DB
         const query = {
             text: 'SELECT id, password, role FROM users WHERE email = $1',
             values: [email],
@@ -22,20 +17,18 @@ const login = async (req, res) => {
         }
 
         const user = result.rows[0];
-        
-        // Verifikasi password
         const match = await bcrypt.compare(password, user.password);
+        
         if (!match) {
             return res.status(401).json({ status: 'failed', message: 'Kredensial yang Anda berikan salah' });
         }
 
-        // Buat token
         const accessToken = TokenManager.generateAccessToken({ id: user.id, role: user.role });
         const refreshToken = TokenManager.generateRefreshToken({ id: user.id, role: user.role });
 
-        // Simpan refresh token ke database
         await pool.query('INSERT INTO authentications (token) VALUES($1)', [refreshToken]);
 
+        // Postman script membutuhkan kembalian data persis seperti ini
         res.status(200).json({
             status: 'success',
             data: { accessToken, refreshToken },
@@ -44,6 +37,7 @@ const login = async (req, res) => {
         res.status(500).json({ status: 'error', message: error.message });
     }
 };
+
 
 const refreshAuth = async (req, res) => {
     try {

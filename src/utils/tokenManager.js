@@ -3,7 +3,8 @@ const jwt = require('jsonwebtoken');
 const TokenManager = {
     generateAccessToken: (payload) => {
         return jwt.sign(payload, process.env.ACCESS_TOKEN_KEY, {
-            expiresIn: process.env.ACCESS_TOKEN_AGE || '30m', // default 30 menit
+            // Token diset aktif selama 1 jam agar aman selama proses pengujian
+            expiresIn: process.env.ACCESS_TOKEN_AGE || '1h',
         });
     },
     generateRefreshToken: (payload) => {

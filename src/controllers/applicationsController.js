@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const redisClient = require('../config/redis');
+const { sendMessage } = require('../services/rabbitmq'); // Import fungsi RabbitMQ
 
 const addApplication = async (req, res) => {
     try {
@@ -7,17 +8,26 @@ const addApplication = async (req, res) => {
         const userId = req.user.id; 
         const id = `application-${Date.now()}`;
 
+        // 1. Simpan ke PostgreSQL
         const query = {
             text: 'INSERT INTO applications (id, cover_letter, user_id, job_id) VALUES($1, $2, $3, $4) RETURNING id',
             values: [id, coverLetter, userId, jobId],
         };
         const result = await pool.query(query);
+        const applicationId = result.rows[0].id;
 
-        // Hapus cache list berdasarkan kriteria Advanced
+        // 2. Hapus Cache (Redis)
         await redisClient.del(`applications:user:${userId}`);
         await redisClient.del(`applications:job:${jobId}`);
 
-        res.status(201).json({ status: 'success', data: { id: result.rows[0].id } });
+        // 3. PUBLISH KE RABBITMQ (Poin Basic Kriteria 3)
+        // Queue name misalnya: 'export:applications' atau 'notification:application'
+        const queueName = 'notification:application';
+        const messagePayload = JSON.stringify({ application_id: applicationId });
+        
+        await sendMessage(queueName, messagePayload);
+
+        res.status(201).json({ status: 'success', data: { id: applicationId } });
     } catch (error) {
         res.status(500).json({ status: 'error', message: error.message });
     }
